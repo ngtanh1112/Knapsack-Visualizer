@@ -1,0 +1,410 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knapsack Visualizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.20.15/babel.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-gray-100 font-sans">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const algorithms = {
+      'BruteForce': window.KnapsackAlgorithmBruteForce,
+      'Recursive': window.KnapsackAlgorithmRecursive,
+      'BranchAndBound': window.KnapsackAlgorithmBranchAndBound,
+      'Greedy': window.KnapsackAlgorithmGreedy,
+      'DynamicProgramming': window.KnapsackAlgorithmDynamicProgramming
+    };
+
+    function App() {
+      const [tab, setTab] = useState('introduction');
+      const [items, setItems] = useState([{ weight: 1, value: 10 }, { weight: 2, value: 15 }, { weight: 3, value: 40 }]);
+      const [capacity, setCapacity] = useState(6);
+      const [algorithm, setAlgorithm] = useState('BruteForce');
+      const [solution, setSolution] = useState(null);
+      const [steps, setSteps] = useState([]);
+      const [currentStep, setCurrentStep] = useState(-1);
+      const [isRunning, setIsRunning] = useState(false);
+      const [error, setError] = useState(null);
+
+      const addItem = () => {
+        setItems([...items, { weight: 1, value: 1 }]);
+      };
+
+      const updateItem = (index, field, value) => {
+        const newItems = [...items];
+        newItems[index][field] = parseFloat(value) || 0;
+        setItems(newItems);
+      };
+
+      const runAlgorithm = () => {
+        setError(null);
+        const algoClass = algorithms[algorithm];
+        if (!algoClass) return;
+        try {
+          const algo = new algoClass(items, capacity);
+          setSolution({
+            table: algo.solutionTable,
+            items: algo.solutionItems,
+            maxLength: algo.maxLengthItem
+          });
+          setSteps(algo.steps || []);
+          setCurrentStep(-1);
+          setIsRunning(false);
+        } catch (e) {
+          setError(e.message);
+        }
+      };
+
+      const nextStep = () => {
+        if (currentStep < steps.length - 1) {
+          setCurrentStep(currentStep + 1);
+        }
+      };
+
+      const startAutoRun = () => {
+        setIsRunning(true);
+        setCurrentStep(-1);
+      };
+
+      const stopAutoRun = () => {
+        setIsRunning(false);
+      };
+
+      useEffect(() => {
+        if (isRunning && currentStep < steps.length - 1) {
+          const timer = setTimeout(() => {
+            setCurrentStep(currentStep + 1);
+          }, 500);
+          return () => clearTimeout(timer);
+        }
+      }, [isRunning, currentStep, steps]);
+
+      const renderTable = (table, highlightedCell = null) => {
+        if (!table || table[0].length <= 1) return null;
+        return (
+          <div class="overflow-x-auto">
+            <table class="table-auto border-collapse border">
+              <thead>
+                <tr>
+                  <th class="border p-2">i \ w</th>
+                  {table[0].map((_, w) => (
+                    <th key={w} class="border p-2">{w}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {table.map((row, i) => (
+                  <tr key={i}>
+                    <td class="border p-2">{i}</td>
+                    {row.map((value, w) => (
+                      <td
+                        key={w}
+                        class={`border p-2 ${highlightedCell && highlightedCell[0] === i && highlightedCell[1] === w ? 'bg-green-200' : ''}`}
+                      >
+                        {value}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      };
+
+      const renderBruteForceStep = (step, stepIndex) => (
+        <div class="mt-4">
+          <h4 class="text-lg font-semibold mb-2">Danh sách tập hợp con đã kiểm tra</h4>
+          <div class="max-h-64 overflow-y-auto border rounded p-2">
+            {steps.slice(0, stepIndex + 1).map((s, index) => (
+              <div
+                key={index}
+                class={`p-2 mb-1 rounded ${index === stepIndex ? 'bg-gray-100 border-2 border-blue-500' : ''} ${s.isValid ? 'bg-green-50' : 'bg-red-50'}`}
+              >
+                <p class="font-semibold">
+                  Tập hợp [{s.selectedItems.join(', ') || 'Không'}]
+                  {s.isOptimal && <span class="ml-2 text-yellow-500 font-bold"> (Tối ưu)</span>}
+                </p>
+                <p>Trọng lượng: {s.currentWeight}, Giá trị: {s.currentValue}</p>
+                <p class={s.isValid ? 'text-green-500' : 'text-red-500'}>
+                  {s.isValid ? 'Hợp lệ' : 'Không hợp lệ'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+      const renderRecursiveStep = (step) => (
+        <div>
+          <p class="mb-2">Trạng thái: [index: {step.index}, capacity: {step.currentCapacity}]</p>
+          <p class={`mb-2 ${step.isMemoized ? 'text-yellow-500' : 'text-green-500'}`}>
+            {step.isMemoized ? 'Lấy từ memo' : 'Tính mới'}
+          </p>
+        </div>
+      );
+
+      const renderBranchAndBoundStep = (step) => (
+        <div>
+          <p class="mb-2">Nút: [Vật phẩm: {step.items.join(', ') || 'Không'}, Giá trị: {step.value}, Trọng lượng: {step.weight}]</p>
+          <p class="mb-2">Bound: {step.bound.toFixed(2)}</p>
+          <p class={`mb-2 ${step.isPruned ? 'text-red-500' : step.isOptimal ? 'text-blue-500' : 'text-green-500'}`}>
+            {step.isPruned ? 'Cắt tỉa' : step.isOptimal ? 'Cập nhật tối ưu' : 'Hợp lệ'}
+          </p>
+        </div>
+      );
+
+      const renderGreedyStep = (step) => (
+        <div>
+          {step.sortedItems ? (
+            <p class="mb-2">Sắp xếp: {step.sortedItems.join(', ')}</p>
+          ) : (
+            <p class="mb-2">
+              Vật phẩm {step.selectedItem || 'Không'}: {step.selectedItem ? 'Chọn' : 'Bỏ qua'}
+              <span class={`ml-2 ${step.selectedItem ? 'text-green-500' : 'text-gray-500'}`}>
+                (Tổng trọng lượng: {step.currentWeight}, Tổng giá trị: {step.currentValue})
+              </span>
+            </p>
+          )}
+        </div>
+      );
+
+      const renderStepVisualization = (step, stepIndex) => {
+        if (algorithm === 'DynamicProgramming' && step.table) {
+          return renderTable(step.table, step.highlightedCell);
+        } else if (algorithm === 'BruteForce') {
+          return renderBruteForceStep(step, stepIndex);
+        } else if (algorithm === 'Recursive') {
+          return renderRecursiveStep(step);
+        } else if (algorithm === 'BranchAndBound') {
+          return renderBranchAndBoundStep(step);
+        } else if (algorithm === 'Greedy') {
+          return renderGreedyStep(step);
+        }
+        return null;
+      };
+
+      const renderTabContent = () => {
+        switch (tab) {
+          case 'introduction':
+            return (
+              <div>
+                <h2 class="text-2xl font-bold mb-4">Giới thiệu</h2>
+                <p>Knapsack Visualizer là trang web minh họa bài toán Xếp Ba Lô, giúp người dùng hiểu cách các thuật toán Vét cạn, Đệ quy, Nhánh cận, Tham lam và Quy hoạch động hoạt động.</p>
+              </div>
+            );
+          case 'problem':
+            return (
+              <div>
+                <h2 class="text-2xl font-bold mb-4">Mô tả bài toán</h2>
+                <p>Bài toán Xếp Ba Lô yêu cầu chọn một tập hợp con các vật phẩm (mỗi vật phẩm có trọng lượng và giá trị) sao cho tổng giá trị là lớn nhất, trong khi tổng trọng lượng không vượt quá dung lượng túi.</p>
+                <p>Cho <b>n</b> vật phẩm, mỗi vật phẩm có trọng lượng <b>w_i</b> và giá trị <b>v_i</b>, và dung lượng túi <b>W</b>. Tìm tập hợp con <b>S</b> sao cho:</p>
+                <p class="font-mono">max Σ(v_i) và thỏa mãn điều kiện Σ(w_i) ≤ W, i ∈ S</p>
+                </div>
+            );
+          case 'methods':
+            return (
+              <div>
+                <h2 class="text-2xl font-bold mb-4">Phương pháp áp dụng</h2>
+                <ul class="list-disc pl-6">
+                  <li><strong>Vét cạn</strong>: Kiểm tra tất cả tập hợp con (O(2^n)).</li>
+                  <li><strong>Đệ quy</strong>: Sử dụng memoization để tránh tính toán lại (O(n*W)).</li>
+                  <li><strong>Nhánh cận</strong>: Khám phá nút với giá trị ước lượng cao, cắt tỉa nhánh kém (O(2^n) xấu nhất).</li>
+                  <li><strong>Tham lam</strong>: Chọn vật phẩm theo tỷ lệ value/weight, không tối ưu (O(n log n)).</li>
+                  <li><strong>Quy hoạch động</strong>: Xây dựng bảng giải pháp (O(n*W)).</li>
+                </ul>
+              </div>
+            );
+          case 'experiment':
+            return (
+              <div>
+                <h2 class="text-2xl font-bold mb-4">Thực nghiệm</h2>
+                <div class="mb-4">
+                  <h3 class="text-xl font-semibold">Nhập dữ liệu</h3>
+                  {items.map((item, index) => (
+                    <div key={index} class="flex space-x-2 mb-2">
+                      <input
+                        type="number"
+                        value={item.weight}
+                        onChange={(e) => updateItem(index, 'weight', e.target.value)}
+                        class="border p-2 rounded"
+                        placeholder="Trọng lượng"
+                      />
+                      <input
+                        type="number"
+                        value={item.value}
+                        onChange={(e) => updateItem(index, 'value', e.target.value)}
+                        class="border p-2 rounded"
+                        placeholder="Giá trị"
+                      />
+                    </div>
+                  ))}
+                  <button onClick={addItem} class="bg-blue-500 text-white p-2 rounded">Thêm vật phẩm</button>
+                  <div class="mt-2">
+                    <label>Dung lượng túi: </label>
+                    <input
+                      type="number"
+                      value={capacity}
+                      onChange={(e) => setCapacity(parseFloat(e.target.value) || 0)}
+                      class="border p-2 rounded"
+                    />
+                  </div>
+                  <div class="mt-2">
+                    <label>Chọn thuật toán: </label>
+                    <select
+                      value={algorithm}
+                      onChange={(e) => setAlgorithm(e.target.value)}
+                      class="border p-2 rounded"
+                    >
+                      <option value="BruteForce">Vét cạn</option>
+                      <option value="Recursive">Đệ quy</option>
+                      <option value="BranchAndBound">Nhánh cận</option>
+                      <option value="Greedy">Tham lam</option>
+                      <option value="DynamicProgramming">Quy hoạch động</option>
+                    </select>
+                  </div>
+                  <button onClick={runAlgorithm} class="bg-green-500 text-white p-2 rounded mt-2">Chạy</button>
+                </div>
+                {error && (
+                  <div class="mt-4 p-4 bg-red-100 text-red-700 rounded">
+                    Lỗi: {error}
+                  </div>
+                )}
+                {steps.length > 0 && (
+                  <div class="mt-4">
+                    <h3 class="text-xl font-semibold">Minh họa từng bước</h3>
+                    <div class="flex space-x-2 mb-4">
+                      <button
+                        onClick={nextStep}
+                        disabled={currentStep >= steps.length - 1}
+                        class="bg-yellow-500 text-white p-2 rounded disabled:bg-gray-300"
+                      >
+                        Bước tiếp theo
+                      </button>
+                      <button
+                        onClick={startAutoRun}
+                        disabled={isRunning}
+                        class="bg-purple-500 text-white p-2 rounded disabled:bg-gray-300"
+                      >
+                        Tự động chạy
+                      </button>
+                      <button
+                        onClick={stopAutoRun}
+                        disabled={!isRunning}
+                        class="bg-red-500 text-white p-2 rounded disabled:bg-gray-300"
+                      >
+                        Dừng
+                      </button>
+                    </div>
+                    {currentStep >= 0 && steps[currentStep] && (
+                      <div>
+                        <p class="mb-2">Bước {currentStep + 1}: {steps[currentStep].description}</p>
+                        {renderStepVisualization(steps[currentStep], currentStep)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {solution && (
+                  <div class="mt-4">
+                    <h3 class="text-xl font-semibold">Kết quả cuối cùng</h3>
+                    <p>Giá trị tối ưu: {solution.table[solution.table.length - 1][capacity]}</p>
+                    <h4 class="text-lg font-semibold">Vật phẩm được chọn:</h4>
+                    <ul class="list-disc pl-6">
+                      {solution.items.filter(item => item.inSolution).map((item, index) => (
+                        <li key={index}>Vật phẩm {item.index}: Trọng lượng {item.weight}, Giá trị {item.value}</li>
+                      ))}
+                    </ul>
+                    {algorithm === 'DynamicProgramming' && renderTable(solution.table)}
+                  </div>
+                )}
+              </div>
+            );
+          case 'evaluation':
+            return (
+              <div>
+                <h2 class="text-2xl font-bold mb-4">Đánh giá độ phức tạp và so sánh</h2>
+                <table class="table-auto border-collapse border">
+                  <thead>
+                    <tr>
+                      <th class="border p-2">Thuật toán</th>
+                      <th class="border p-2">Thời gian</th>
+                      <th class="border p-2">Không gian</th>
+                      <th class="border p-2">Tối ưu</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="border p-2">Vét cạn</td>
+                      <td class="border p-2">O(2^n)</td>
+                      <td class="border p-2">O(n)</td>
+                      <td class="border p-2">Có</td>
+                    </tr>
+                    <tr>
+                      <td class="border p-2">Đệ quy</td>
+                      <td class="border p-2">O(n*W)</td>
+                      <td class="border p-2">O(n*W)</td>
+                      <td class="border p-2">Có</td>
+                    </tr>
+                    <tr>
+                      <td class="border p-2">Nhánh cận</td>
+                      <td class="border p-2">O(2^n) (xấu nhất)</td>
+                      <td class="border p-2">O(n)</td>
+                      <td class="border p-2">Có</td>
+                    </tr>
+                    <tr>
+                      <td class="border p-2">Tham lam</td>
+                      <td class="border p-2">O(n log n)</td>
+                      <td class="border p-2">O(n)</td>
+                      <td class="border p-2">Không</td>
+                    </tr>
+                    <tr>
+                      <td class="border p-2">Quy hoạch động</td>
+                      <td class="border p-2">O(n*W)</td>
+                      <td class="border p-2">O(n*W)</td>
+                      <td class="border p-2">Có</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            );
+          default:
+            return null;
+        }
+      };
+
+      return (
+        <div class="container mx-auto p-4">
+          <h1 class="text-3xl font-bold mb-6 text-center">Knapsack Visualizer</h1>
+          <div class="flex space-x-4 mb-6">
+            <button onClick={() => setTab('introduction')} class={`p-2 rounded ${tab === 'introduction' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Giới thiệu</button>
+            <button onClick={() => setTab('problem')} class={`p-2 rounded ${tab === 'problem' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Mô tả bài toán</button>
+            <button onClick={() => setTab('methods')} class={`p-2 rounded ${tab === 'methods' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Phương pháp áp dụng</button>
+            <button onClick={() => setTab('experiment')} class={`p-2 rounded ${tab === 'experiment' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Thực nghiệm</button>
+            <button onClick={() => setTab('evaluation')} class={`p-2 rounded ${tab === 'evaluation' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Đánh giá</button>
+          </div>
+          <div class="bg-white p-6 rounded shadow">{renderTabContent()}</div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+  <script src="js/SolutionItem.js"></script>
+  <script src="js/CellDetail.js"></script>
+  <script src="js/Formatting.js"></script>
+  <script src="js/KnapsackAlgorithmBruteForce.js"></script>
+  <script src="js/KnapsackAlgorithmRecursive.js"></script>
+  <script src="js/KnapsackAlgorithmBranchAndBound.js"></script>
+  <script src="js/KnapsackAlgorithmGreedy.js"></script>
+  <script src="js/KnapsackAlgorithmDynamicProgramming.js"></script>
+</body>
+</html> -->

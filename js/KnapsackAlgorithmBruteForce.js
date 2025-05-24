@@ -30,28 +30,65 @@ class KnapsackAlgorithmBruteForce {
   }
 
   _knapsack() {
-    const n = this._items.length;
     let maxValue = 0;
     let bestItems = [];
+    const n = this._items.length;
 
-    // Duyệt qua tất cả tập hợp con
-    for (let i = 0; i < (1 << n); i++) {
-      let currentWeight = 0;
-      let currentValue = 0;
-      let selectedItems = [];
-
-      for (let j = 0; j < n; j++) {
-        if (i & (1 << j)) {
-          currentWeight += this._items[j].weight;
-          currentValue += this._items[j].value;
-          selectedItems.push(j); // Lưu chỉ số gốc (0-based)
+    // Hàm tạo tổ hợp có kích thước r
+    function combinations(arr, r) {
+      const result = [];
+      function generateCombos(start, combo) {
+        if (combo.length === r) {
+          result.push([...combo]);
+          return;
+        }
+        for (let i = start; i < arr.length; i++) {
+          combo.push(arr[i]);
+          generateCombos(i + 1, combo);
+          combo.pop();
         }
       }
+      generateCombos(0, []);
+      return result;
+    }
 
-      // Cập nhật nếu tập hợp hợp lệ và có giá trị tốt hơn
-      if (currentWeight <= this._capacity && currentValue > maxValue) {
-        maxValue = currentValue;
-        bestItems = selectedItems;
+    // Reset steps
+    this._steps = [];
+
+    // Duyệt qua tất cả kích thước tập hợp con từ 0 đến n
+    for (let r = 0; r <= n; r++) {
+      // Tạo tất cả tập hợp con có kích thước r
+      const subsets = combinations([...Array(n).keys()], r);
+      for (const subset of subsets) {
+        let currentWeight = 0;
+        let currentValue = 0;
+        const selectedItems = subset;
+
+        // Tính tổng trọng lượng và giá trị
+        for (const index of subset) {
+          currentWeight += this._items[index].weight;
+          currentValue += this._items[index].value;
+        }
+
+        // Lưu bước cho debug/hiển thị
+        this._steps.push({
+          description: `Kiểm tra tập hợp [${
+            selectedItems.length > 0 ? selectedItems.map(i => i + 1).join(", ") : "rỗng"
+          }]: Trọng lượng ${currentWeight}, Giá trị ${currentValue}${
+            currentWeight <= this._capacity && currentValue >= maxValue ? " (Cập nhật tối ưu)" : ""
+          }`,
+          selectedItems: selectedItems.length > 0 ? selectedItems.map(i => i + 1) : [],
+          currentWeight,
+          currentValue,
+          isValid: currentWeight <= this._capacity,
+          isOptimal: currentWeight <= this._capacity && currentValue >= maxValue
+        });
+
+        // Cập nhật nếu tập hợp hợp lệ và có giá trị tốt hơn
+        if (currentWeight <= this._capacity && currentValue > maxValue) {
+          maxValue = currentValue;
+          bestItems = [...selectedItems];
+        }
       }
     }
 
@@ -72,31 +109,6 @@ class KnapsackAlgorithmBruteForce {
     const cell = new window.CellDetail(n, this._capacity);
     cell.cellValue = maxValue;
     this._contributingCells[[n, this._capacity]] = cell;
-
-    // Tạo các bước để debug/hiển thị
-    this._steps = []; // Reset _steps để tránh dữ liệu cũ
-    for (let i = 0; i < (1 << n); i++) {
-      let currentWeight = 0;
-      let currentValue = 0;
-      let selectedItems = [];
-
-      for (let j = 0; j < n; j++) {
-        if (i & (1 << j)) {
-          currentWeight += this._items[j].weight;
-          currentValue += this._items[j].value;
-          selectedItems.push(j + 1); // Hiển thị chỉ số 1-based cho người dùng
-        }
-      }
-
-      this._steps.push({
-        description: `Kiểm tra tập hợp [${selectedItems.length > 0 ? selectedItems.join(", ") : "rỗng"}]: Trọng lượng ${currentWeight}, Giá trị ${currentValue}${currentWeight <= this._capacity && currentValue >= maxValue ? " (Cập nhật tối ưu)" : ""}`,
-        selectedItems: selectedItems.length > 0 ? selectedItems : [], // Đảm bảo là mảng
-        currentWeight,
-        currentValue,
-        isValid: currentWeight <= this._capacity,
-        isOptimal: currentWeight <= this._capacity && currentValue >= maxValue
-      });
-    }
 
     return table;
   }

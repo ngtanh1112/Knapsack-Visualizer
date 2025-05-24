@@ -1,12 +1,6 @@
 class KnapsackAlgorithmGreedy {
-  _solutionTable;
-  _solutionItems;
-  _maxLengthItem;
-  _contributingCells;
-  _bestItems;
-  _steps;
-
   constructor(items, capacity) {
+    // Kiểm tra input
     if (!items || items.length === 0) throw new Error("Danh sách vật phẩm không được rỗng");
     if (capacity < 0) throw new Error("Dung lượng túi phải không âm");
     items.forEach((item, index) => {
@@ -17,68 +11,82 @@ class KnapsackAlgorithmGreedy {
 
     this._items = items;
     this._capacity = Math.floor(capacity);
-    this._maxLengthItem = 0;
+    this._solutionTable = null;
+    this._solutionItems = null;
+    this._maxValue = 0;
     this._contributingCells = {};
     this._bestItems = [];
     this._steps = [];
   }
 
   _init() {
-    if (!this._solutionTable) {
-      this._solutionTable = this._knapsack();
-    }
-    if (!this._solutionItems) {
+    if (!this._solutionTable || !this._solutionItems) {
+      const { maxValue, selectedItems } = this._knapsack();
+      this._maxValue = maxValue;
+      this._bestItems = selectedItems;
+      this._solutionTable = this._createSolutionTable(maxValue);
       this._solutionItems = this._findItemsThatFit();
     }
   }
 
   _knapsack() {
-    const n = this._items.length;
-    const sortedItems = [...this._items].map((item, index) => ({ ...item, originalIndex: index }))
-      .sort((a, b) => (b.value / b.weight) - (a.value / a.weight));
+    // Sắp xếp vật phẩm theo tỷ lệ giá trị/trọng lượng giảm dần
+    const sortedItems = [...this._items]
+      .map((item, index) => ({ ...item, originalIndex: index }))
+      .sort((a, b) => b.value / b.weight - a.value / a.weight);
 
     let currentWeight = 0;
     let currentValue = 0;
     const selectedItems = [];
 
-    this._steps.push({
-      description: `Sắp xếp vật phẩm theo tỷ lệ giá trị/trọng lượng: [${sortedItems.map(item => `Vật phẩm ${item.originalIndex + 1}: ${item.value}/${item.weight}`).join(', ')}]`,
-      sortedItems: sortedItems.map(item => item.originalIndex + 1)
-    });
-
+    // Duyệt và chọn vật phẩm
     for (const item of sortedItems) {
       if (currentWeight + item.weight <= this._capacity) {
         currentWeight += item.weight;
         currentValue += item.value;
         selectedItems.push(item.originalIndex);
-        this._steps.push({
-          description: `Chọn vật phẩm ${item.originalIndex + 1}: Trọng lượng ${item.weight}, Giá trị ${item.value} (Tổng: ${currentWeight}, ${currentValue})`,
-          selectedItem: item.originalIndex + 1,
-          currentWeight,
-          currentValue
-        });
-      } else {
-        this._steps.push({
-          description: `Bỏ qua vật phẩm ${item.originalIndex + 1}: Trọng lượng ${item.weight} vượt quá dung lượng còn lại (${this._capacity - currentWeight})`,
-          selectedItem: null,
-          currentWeight,
-          currentValue
-        });
       }
     }
 
-    this._maxLengthItem = currentValue;
-    this._bestItems = selectedItems;
+    return { maxValue: currentValue, selectedItems };
+  }
 
+  _createSolutionTable(maxValue) {
+    const n = this._items.length;
+    // Tạo bảng 2D với tất cả giá trị là 0
     const table = [];
     for (let i = 0; i <= n; i++) {
       table.push(Array(this._capacity + 1).fill(0));
     }
-    table[n][this._capacity] = currentValue;
+    // Gán giá trị tối đa tại ô (n, capacity)
+    table[n][this._capacity] = maxValue;
 
+    // Lưu thông tin ô đóng góp
     const cell = new window.CellDetail(n, this._capacity);
-    cell.cellValue = currentValue;
+    cell.cellValue = maxValue;
     this._contributingCells[[n, this._capacity]] = cell;
+
+    // Lưu các bước để debug/hiển thị
+    this._steps.push({
+      description: `Sắp xếp vật phẩm theo tỷ lệ giá trị/trọng lượng: [${this._items.map(
+        (item, index) => `Vật phẩm ${index + 1}: ${item.value}/${item.weight} = ${(item.value / item.weight).toFixed(2)}`
+      ).join(", ")}]`,
+      sortedItems: this._items.map((_, index) => index + 1)
+    });
+
+    for (const item of this._items.map((item, index) => ({ ...item, originalIndex: index }))) {
+      if (this._bestItems.includes(item.originalIndex)) {
+        this._steps.push({
+          description: `Chọn vật phẩm ${item.originalIndex + 1}: Trọng lượng ${item.weight}, Giá trị ${item.value}`,
+          selectedItem: item.originalIndex + 1
+        });
+      } else {
+        this._steps.push({
+          description: `Bỏ qua vật phẩm ${item.originalIndex + 1}: Trọng lượng ${item.weight} vượt quá dung lượng còn lại`,
+          selectedItem: null
+        });
+      }
+    }
 
     return table;
   }
@@ -119,8 +127,8 @@ class KnapsackAlgorithmGreedy {
     return this._capacity;
   }
 
-  get maxLengthItem() {
-    return this._maxLengthItem;
+  get maxValue() {
+    return this._maxValue;
   }
 
   get steps() {

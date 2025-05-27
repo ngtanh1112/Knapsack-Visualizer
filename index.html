@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.20.15/babel.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="Code/css/style.css">
 </head>
 <body class="bg-gray-100 font-sans">
   <div id="root"></div>
@@ -26,8 +26,8 @@
     function App() {
       const [tab, setTab] = useState('introduction');
       const [items, setItems] = useState([{ weight: 1, value: 10 }, { weight: 2, value: 15 }, { weight: 3, value: 40 }]);
-      const [capacity, setCapacity] = useState(6);
-      const [algorithm, setAlgorithm] = useState('BruteForce');
+      const [capacity, setCapacity] = useState(15);
+      const [algorithm, setAlgorithm] = useState('DynamicProgramming');
       const [solution, setSolution] = useState(null);
       const [steps, setSteps] = useState([]);
       const [currentStep, setCurrentStep] = useState(-1);
@@ -122,7 +122,7 @@
 
       const renderBruteForceStep = (step, stepIndex) => (
         <div class="mt-4">
-          <h4 class="text-lg font-semibold mb-2">Danh sách tập hợp con đã kiểm tra</h4>
+          <h4 class="text-lg font-semibold mb-2">List of checked subsets</h4>
           <div class="max-h-64 overflow-y-auto border rounded p-2">
             {steps.slice(0, stepIndex + 1).map((s, index) => (
               <div
@@ -130,12 +130,12 @@
                 class={`p-2 mb-1 rounded ${index === stepIndex ? 'bg-gray-100 border-2 border-blue-500' : ''} ${s.isValid ? 'bg-green-50' : 'bg-red-50'}`}
               >
                 <p class="font-semibold">
-                  Tập hợp [{s.selectedItems.join(', ') || 'Không'}]
-                  {s.isOptimal && <span class="ml-2 text-yellow-500 font-bold"> (Tối ưu)</span>}
+                  Subset [{s.selectedItems.join(', ') || 'None'}]
+                  {s.isOptimal && <span class="ml-2 text-yellow-500 font-bold"> (Optimal)</span>}
                 </p>
-                <p>Trọng lượng: {s.currentWeight}, Giá trị: {s.currentValue}</p>
+                <p>Weight: {s.currentWeight}, Value: {s.currentValue}</p>
                 <p class={s.isValid ? 'text-green-500' : 'text-red-500'}>
-                  {s.isValid ? 'Hợp lệ' : 'Không hợp lệ'}
+                  {s.isValid ? 'Valid' : 'Invalid'}
                 </p>
               </div>
             ))}
@@ -145,19 +145,19 @@
 
       const renderRecursiveStep = (step) => (
         <div>
-          <p class="mb-2">Trạng thái: [index: {step.index}, capacity: {step.currentCapacity}]</p>
+          <p class="mb-2">State: [index: {step.index}, capacity: {step.currentCapacity}]</p>
           <p class={`mb-2 ${step.isMemoized ? 'text-yellow-500' : 'text-green-500'}`}>
-            {step.isMemoized ? 'Lấy từ memo' : 'Tính mới'}
+            {step.isMemoized ? 'Retrieved from memo' : 'Newly calculated'}
           </p>
         </div>
       );
 
       const renderBranchAndBoundStep = (step) => (
         <div>
-          <p class="mb-2">Nút: [Vật phẩm: {step.items.join(', ') || 'Không'}, Giá trị: {step.value}, Trọng lượng: {step.weight}]</p>
+          <p class="mb-2">Node: [Items: {step.items.join(', ') || 'None'}, Value: {step.value}, Weight: {step.weight}]</p>
           <p class="mb-2">Bound: {step.bound.toFixed(2)}</p>
           <p class={`mb-2 ${step.isPruned ? 'text-red-500' : step.isOptimal ? 'text-blue-500' : 'text-green-500'}`}>
-            {step.isPruned ? 'Cắt tỉa' : step.isOptimal ? 'Cập nhật tối ưu' : 'Hợp lệ'}
+            {step.isPruned ? 'Pruned' : step.isOptimal ? 'Optimal updated' : 'Valid'}
           </p>
         </div>
       );
@@ -165,12 +165,12 @@
       const renderGreedyStep = (step) => (
         <div>
           {step.sortedItems ? (
-            <p class="mb-2">Sắp xếp: {step.sortedItems.join(', ')}</p>
+            <p class="mb-2">Sorted: {step.sortedItems.join(', ')}</p>
           ) : (
             <p class="mb-2">
-              Vật phẩm {step.selectedItem || 'Không'}: {step.selectedItem ? 'Chọn' : 'Bỏ qua'}
+              Item {step.selectedItem || 'None'}: {step.selectedItem ? 'Selected' : 'Skipped'}
               <span class={`ml-2 ${step.selectedItem ? 'text-green-500' : 'text-gray-500'}`}>
-                (Tổng trọng lượng: {step.currentWeight}, Tổng giá trị: {step.currentValue})
+                (Total weight: {step.currentWeight}, Total value: {step.currentValue})
               </span>
             </p>
           )}
@@ -197,38 +197,15 @@
           case 'introduction':
             return (
               <div>
-                <h2 class="text-2xl font-bold mb-4">Giới thiệu</h2>
-                <p>Knapsack Visualizer là trang web minh họa bài toán Xếp Ba Lô, nhằm hiểu cách các thuật toán Vét cạn, Đệ quy, Nhánh cận, Tham lam và Quy hoạch động hoạt động.</p>
-              </div>
-            );
-          case 'problem':
-            return (
-              <div>
-                <h2 class="text-2xl font-bold mb-4">Mô tả bài toán</h2>
-                <p>Bài toán Xếp Ba Lô yêu cầu chọn một tập hợp con các vật phẩm (mỗi vật phẩm có trọng lượng và giá trị) sao cho tổng giá trị là lớn nhất, trong khi tổng trọng lượng không vượt quá dung lượng túi.</p>
-                <p>Cho <b>n</b> vật phẩm, mỗi vật phẩm có trọng lượng <b>w_i</b> và giá trị <b>v_i</b>, và dung lượng túi <b>W</b>. Tìm tập hợp con <b>S</b> sao cho:</p>
-                <p class="font-mono">max Σ(v_i) và thỏa mãn điều kiện Σ(w_i) ≤ W, i ∈ S</p>
-                </div>
-            );
-          case 'methods':
-            return (
-              <div>
-                <h2 class="text-2xl font-bold mb-4">Phương pháp áp dụng</h2>
                 <ul class="list-disc pl-6">
-                  <li><strong>Vét cạn</strong>: Kiểm tra tất cả tập hợp con (O(2^n)).</li>
-                  <li><strong>Đệ quy</strong>:</li>
-                  <li><strong>Nhánh cận</strong>:</li>
-                  <li><strong>Tham lam</strong>:</li>
-                  <li><strong>Quy hoạch động</strong>: Xây dựng bảng giải pháp (O(n*W)).</li>
+                  <h2 class="text-2xl font-bold mb-4">Introduction & Experiment</h2>
+                  <li><p>Knapsack Visualizer is a website that illustrates the Knapsack Problem to understand how Brute Force, Recursive, Branch and Bound, Greedy, and Dynamic Programming algorithms work.</p></li>
+                  <li><p>The Knapsack Problem requires selecting a subset of items (each with a weight and value) such that the total value is maximized while the total weight does not exceed the knapsack capacity.</p></li>
+                  <li><p>Given <b>n</b> items, each with weight <b>w_i</b> and value <b>v_i</b>, and knapsack capacity <b>W</b>, find subset <b>S</b> such that:</p></li>
+                  <p class="font-mono">max Σ(v_i) subject to Σ(w_i) ≤ W, i ∈ S</p>
                 </ul>
-              </div>
-            );
-          case 'experiment':
-            return (
-              <div>
-                <h2 class="text-2xl font-bold mb-4">Thực nghiệm</h2>
-                <div class="mb-4">
-                  <h3 class="text-xl font-semibold">Nhập dữ liệu</h3>
+                <div class="mt-6">
+                  <h3 class="text-xl font-semibold">Enter Data</h3>
                   {items.map((item, index) => (
                     <div key={index} class="flex space-x-2 mb-2">
                       <input
@@ -236,20 +213,20 @@
                         value={item.weight}
                         onChange={(e) => updateItem(index, 'weight', e.target.value)}
                         class="border p-2 rounded"
-                        placeholder="Trọng lượng"
+                        placeholder="Weight"
                       />
                       <input
                         type="number"
                         value={item.value}
                         onChange={(e) => updateItem(index, 'value', e.target.value)}
                         class="border p-2 rounded"
-                        placeholder="Giá trị"
+                        placeholder="Value"
                       />
                     </div>
                   ))}
-                  <button onClick={addItem} class="bg-blue-500 text-white p-2 rounded">Thêm vật phẩm</button>
+                  <button onClick={addItem} class="bg-blue-500 text-white p-2 rounded">Add Item</button>
                   <div class="mt-2">
-                    <label>Dung lượng túi: </label>
+                    <label>Knapsack Capacity: </label>
                     <input
                       type="number"
                       value={capacity}
@@ -258,55 +235,55 @@
                     />
                   </div>
                   <div class="mt-2">
-                    <label>Chọn thuật toán: </label>
+                    <label>Select Algorithm: </label>
                     <select
                       value={algorithm}
                       onChange={(e) => setAlgorithm(e.target.value)}
                       class="border p-2 rounded"
                     >
-                      <option value="BruteForce">Vét cạn</option>
-                      <option value="Recursive">Đệ quy</option>
-                      <option value="BranchAndBound">Nhánh cận</option>
-                      <option value="Greedy">Tham lam</option>
-                      <option value="DynamicProgramming">Quy hoạch động</option>
+                      <option value="DynamicProgramming">Dynamic Programming</option>
+                      <option value="BruteForce">Brute Force</option>
+                      <option value="Recursive">Recursive</option>
+                      <option value="BranchAndBound">Branch and Bound</option>
+                      <option value="Greedy">Greedy</option>
                     </select>
                   </div>
-                  <button onClick={runAlgorithm} class="bg-green-500 text-white p-2 rounded mt-2">Chạy</button>
+                  <button onClick={runAlgorithm} class="bg-green-500 text-white p-2 rounded mt-2">Run</button>
                 </div>
                 {error && (
                   <div class="mt-4 p-4 bg-red-100 text-red-700 rounded">
-                    Lỗi: {error}
+                    Error: {error}
                   </div>
                 )}
                 {steps.length > 0 && (
                   <div class="mt-4">
-                    <h3 class="text-xl font-semibold">Minh họa từng bước</h3>
+                    <h3 class="text-xl font-semibold">Step-by-Step Visualization</h3>
                     <div class="flex space-x-2 mb-4">
                       <button
                         onClick={nextStep}
                         disabled={currentStep >= steps.length - 1}
                         class="bg-yellow-500 text-white p-2 rounded disabled:bg-gray-300"
                       >
-                        Bước tiếp theo
+                        Next Step
                       </button>
                       <button
                         onClick={startAutoRun}
                         disabled={isRunning}
                         class="bg-purple-500 text-white p-2 rounded disabled:bg-gray-300"
                       >
-                        Tự động chạy
+                        Auto Run
                       </button>
                       <button
                         onClick={stopAutoRun}
                         disabled={!isRunning}
                         class="bg-red-500 text-white p-2 rounded disabled:bg-gray-300"
                       >
-                        Dừng
+                        Stop
                       </button>
                     </div>
                     {currentStep >= 0 && steps[currentStep] && (
                       <div>
-                        <p class="mb-2">Bước {currentStep + 1}: {steps[currentStep].description}</p>
+                        <p class="mb-2">Step {currentStep + 1}: {steps[currentStep].description}</p>
                         {renderStepVisualization(steps[currentStep], currentStep)}
                       </div>
                     )}
@@ -314,12 +291,12 @@
                 )}
                 {solution && (
                   <div class="mt-4">
-                    <h3 class="text-xl font-semibold">Kết quả cuối cùng</h3>
-                    <p>Giá trị tối ưu: {solution.table[solution.table.length - 1][capacity]}</p>
-                    <h4 class="text-lg font-semibold">Vật phẩm được chọn:</h4>
+                    <h3 class="text-xl font-semibold">Final Result</h3>
+                    <p>Optimal Value: {solution.table[solution.table.length - 1][capacity]}</p>
+                    <h4 class="text-lg font-semibold">Selected Items:</h4>
                     <ul class="list-disc pl-6">
                       {solution.items.filter(item => item.inSolution).map((item, index) => (
-                        <li key={index}>Vật phẩm {item.index}: Trọng lượng {item.weight}, Giá trị {item.value}</li>
+                        <li key={index}>Item {item.index}: Weight {item.weight}, Value {item.value}</li>
                       ))}
                     </ul>
                     {algorithm === 'DynamicProgramming' && renderTable(solution.table)}
@@ -330,46 +307,46 @@
           case 'evaluation':
             return (
               <div>
-                <h2 class="text-2xl font-bold mb-4">Đánh giá độ phức tạp và so sánh</h2>
+                <h2 class="text-2xl font-bold mb-4">Complexity Evaluation and Comparison</h2>
                 <table class="table-auto border-collapse border">
                   <thead>
                     <tr>
-                      <th class="border p-2">Thuật toán</th>
-                      <th class="border p-2">Thời gian</th>
-                      <th class="border p-2">Không gian</th>
-                      <th class="border p-2">Tối ưu</th>
+                      <th class="border p-2">Algorithm</th>
+                      <th class="border p-2">Time</th>
+                      <th class="border p-2">Space</th>
+                      <th class="border p-2">Optimal</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td class="border p-2">Vét cạn</td>
-                      <td class="border p-2"></td>
-                      <td class="border p-2"></td>
-                      <td class="border p-2"></td>
+                      <td class="border p-2">Brute Force</td>
+                      <td class="border p-2">O(n·2ⁿ)</td>
+                      <td class="border p-2">O(n)</td>
+                      <td class="border p-2">Yes</td>
                     </tr>
                     <tr>
-                      <td class="border p-2">Đệ quy</td>
-                      <td class="border p-2"></td>
-                      <td class="border p-2"></td>
-                      <td class="border p-2"></td>
+                      <td class="border p-2">Recursive</td>
+                      <td class="border p-2">O(2ⁿ)</td>
+                      <td class="border p-2">O(n)</td>
+                      <td class="border p-2">Yes</td>
                     </tr>
                     <tr>
-                      <td class="border p-2">Nhánh cận</td>
-                      <td class="border p-2"></td>
-                      <td class="border p-2"></td>
-                      <td class="border p-2"></td>
+                      <td class="border p-2">Branch and Bound</td>
+                      <td class="border p-2">O(2ⁿ) (better in practice)</td>
+                      <td class="border p-2">O(n)</td>
+                      <td class="border p-2">Yes</td>
                     </tr>
                     <tr>
-                      <td class="border p-2">Tham lam</td>
-                      <td class="border p-2"></td>
-                      <td class="border p-2"></td>
-                      <td class="border p-2"></td>
+                      <td class="border p-2">Greedy</td>
+                      <td class="border p-2">O(n log n)</td>
+                      <td class="border p-2">O(n)</td>
+                      <td class="border p-2">No</td>
                     </tr>
                     <tr>
-                      <td class="border p-2">Quy hoạch động</td>
-                      <td class="border p-2"></td>
-                      <td class="border p-2"></td>
-                      <td class="border p-2"></td>
+                      <td class="border p-2">Dynamic Programming</td>
+                      <td class="border p-2">O(nW)</td>
+                      <td class="border p-2">O(nW) or O(W)</td>
+                      <td class="border p-2">Yes</td>
                     </tr>
                   </tbody>
                 </table>
@@ -382,13 +359,17 @@
 
       return (
         <div class="container mx-auto p-4">
-          <h1 class="text-3xl font-bold mb-6 text-center">Knapsack Visualizer</h1>
+          <div class="flex items-center justify-center mb-6">
+            <img
+              src="https://img.icons8.com/ios-filled/50/000000/backpack.png"
+              alt="Knapsack Icon"
+              class="w-10 h-10 mr-2 icon-animation"
+            />
+            <h1 class="text-3xl font-bold text-center">Knapsack Visualizer</h1>
+          </div>
           <div class="flex space-x-4 mb-6">
-            <button onClick={() => setTab('introduction')} class={`p-2 rounded ${tab === 'introduction' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Giới thiệu</button>
-            <button onClick={() => setTab('problem')} class={`p-2 rounded ${tab === 'problem' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Mô tả bài toán</button>
-            <button onClick={() => setTab('methods')} class={`p-2 rounded ${tab === 'methods' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Phương pháp áp dụng</button>
-            <button onClick={() => setTab('experiment')} class={`p-2 rounded ${tab === 'experiment' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Thực nghiệm</button>
-            <button onClick={() => setTab('evaluation')} class={`p-2 rounded ${tab === 'evaluation' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Đánh giá</button>
+            <button onClick={() => setTab('introduction')} class={`p-2 rounded ${tab === 'introduction' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Introduction & Experiment</button>
+            <button onClick={() => setTab('evaluation')} class={`p-2 rounded ${tab === 'evaluation' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Evaluation</button>
           </div>
           <div class="bg-white p-6 rounded shadow">{renderTabContent()}</div>
         </div>
